@@ -16,7 +16,12 @@
 </head>
 
 <body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
-	<script type="module">
+	<script>
+		const modelEndpoint = '/models'
+		const cupcake = `${modelEndpoint}/chutcake.glb`
+		const loaf = `${modelEndpoint}/loaf.glb`;
+		let currentGlb = loaf;
+
 
 		var renderer = new THREE.WebGLRenderer({
 			// antialias	: true,
@@ -30,13 +35,40 @@
 		renderer.domElement.style.left = '0px'
 		document.body.appendChild(renderer.domElement);
 
+
 		// init scene and camera
 		var scene = new THREE.Scene();
 		var camera = new THREE.Camera();
 		scene.add(camera);
+		THREE.Cache.enabled = true;
 
-		var markerGroup = new THREE.Group();
-		scene.add(markerGroup);
+
+		// Load a gltf/glb model into the ARJS Scene
+		const loadModel = (url) => {
+			currentGlb = url;
+			console.log("Loading Model => ", url)
+			scene.remove.apply(scene, scene.children);
+			const gltfLoader = new THREE.GLTFLoader();
+			gltfLoader.load(url, (gltf) => {
+				const root = gltf.scene
+				scene.add(root)
+			}, (xhr) => {
+				console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+			});
+		}
+
+		// Change the GLB Model based on a Button Press
+		// TODO: Make this work based on a carousel slide
+		// TODO: Make sure caching works too [PROBABLY WORKS]
+		const changeGlb = () => {
+			console.log("On change")
+			if (currentGlb === cupcake)
+				loadModel(loaf);
+			else if (currentGlb === loaf)
+				loadModel(cupcake);
+		}
+
+		loadModel(currentGlb);
 
 		var source = new THREEAR.Source({ renderer, camera });
 
@@ -45,32 +77,10 @@
 			detectionMode: 'mono_and_matrix'
 		}).then((controller) => {
 
-			const gltfLoader = new THREE.GLTFLoader();
-			const url = '/models/chutcake.glb';
-			gltfLoader.load(url, (gltf) => {
-				const root = gltf.scene
-				markerGroup.add(root)
-			});
-			// add a torus knot		
-			let geometry = new THREE.TorusKnotGeometry(0.3, 0.1, 64, 16);
-			let material = new THREE.MeshNormalMaterial();
-			let torus = new THREE.Mesh(geometry, material);
-			torus.position.y = 0.5
-			markerGroup.add(torus);
-
-			geometry = new THREE.CubeGeometry(1, 1, 1);
-			material = new THREE.MeshNormalMaterial({
-				transparent: true,
-				opacity: 0.5,
-				side: THREE.DoubleSide
-			});
-			let cube = new THREE.Mesh(geometry, material);
-			cube.position.y = geometry.parameters.height / 2
-			markerGroup.add(cube)
 
 			const barcodeMarker = new THREEAR.BarcodeMarker({
 				barcodeValue: 30,
-				markerObject: markerGroup,
+				markerObject: scene,
 				minConfidence: 0.2
 			});
 
@@ -87,14 +97,19 @@
 				lastTimeMsec = nowMsec;
 				// call each update function
 				controller.update(source.domElement);
+				// Disabled rotation animation
 				// cube.rotation.x += deltaMsec/10000 * Math.PI
-				torus.rotation.y += deltaMsec / 5000 * Math.PI
-				torus.rotation.z += deltaMsec / 5000 * Math.PI
+				// torus.rotation.y += deltaMsec / 5000 * Math.PI
+				// torus.rotation.z += deltaMsec / 5000 * Math.PI
 				renderer.render(scene, camera);
 			});
 
 		});
 	</script>
+
+	<button onclick="changeGlb()" style="z-index: 100; position: absolute; bottom: 0; left: 0;">
+		Change GLB Pls
+	</button>
 </body>
 
 </html>
